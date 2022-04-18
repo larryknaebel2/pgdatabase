@@ -1,0 +1,72 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+
+	"github.com/jackc/pgx/v4/pgxpool"
+)
+
+//github.com/jackc/pgx/v4/pgxpool
+
+type supplies struct {
+	id           int64
+	name         string
+	description  string
+	manufacturer string
+	color        string
+	inventory    int64
+}
+
+func main() {
+	// urlExample := "postgres://username:password@localhost:5432/database_name"
+	// postgres://postgres:welcome1@localhost:5433/school
+	//set DATABASE_URL=postgres://postgres:welcome1@localhost:5433/school
+	databaseUrl := "postgres://postgres:welcome1@localhost:5433/school"
+	dbPool, err := pgxpool.Connect(context.Background(), databaseUrl)
+
+	//conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	//defer conn.Close(context.Background())
+	defer dbPool.Close()
+	var s supplies
+	//var name string
+	//var inventory int64
+	//err = conn.QueryRow(context.Background(), "select name, inventory from supplies where id=$1", 1).Scan(&name, &inventory)
+
+	err = dbPool.QueryRow(context.Background(),
+		`select id, name, description, manufacturer, color, inventory from supplies where id=$1`,
+		1).Scan(&s.id, &s.name, &s.description, &s.manufacturer, &s.color, &s.inventory)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "QueryRow failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println(s.name, s.description, s.inventory)
+
+	rows, err := dbPool.Query(context.Background(),
+		`select * from supplies`)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
+		os.Exit(1)
+	}
+	defer rows.Close()
+	var allsupplies []supplies
+	var numitems int64 = 0
+	for rows.Next() {
+		var s supplies
+		if err2 := rows.Scan(&s.id, &s.name, &s.description,
+			&s.manufacturer, &s.color, &s.inventory); err2 != nil {
+			//return err2
+		}
+		allsupplies = append(allsupplies, s)
+		numitems += 1
+
+	}
+	fmt.Printf("%v Count: %d", allsupplies, numitems)
+
+}
